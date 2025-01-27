@@ -3,13 +3,22 @@ const ctx = canvas.getContext("2d")
 
 var mouse = {x:0,y:0},
     mouseWorld = {x:0,y:0},
-    player = {position:{x:0,y:0}, velocity:{x:0,y:0}, hit:0},
+
+    player = {
+        position:{x:0,y:0}, 
+        velocity:{x:0,y:0}, 
+        hit:0,
+        health:{current:5,max:5}
+    },
+
+
     camera = {position:{x:0,y:0}, velocity:{x:0,y:0}},
     basicEnemy = {position:{x:0,y:0}, velocity:{x:0,y:0}},
     display = {startWidth:1280, aspectRatio:[4,3], scale:0},
     enemies = [],
     gameState = 1,
-    deathAlpha = 0
+    deathAlpha = 0,
+    healthPoints = []
 
 document.addEventListener("mousemove", function(e) {
     mouse = {
@@ -24,9 +33,19 @@ document.addEventListener("mousedown", (event) => {
 }, false);
 
 function click(){
-    player.velocity.x=(player.position.x-mouseWorld.x)/10
-    player.velocity.y=(player.position.y-mouseWorld.y)/10
-    player.hit=1
+    if(player.health.current>1){
+
+        player.velocity.x=(player.position.x-mouseWorld.x)/10
+        player.velocity.y=(player.position.y-mouseWorld.y)/10
+        player.hit=1
+        healthPoints[healthPoints.length] = {
+            position:{x:player.position.x,y:player.position.y},
+            velocity:{x:-player.velocity.x,y:-player.velocity.y},
+            rotation:0,
+            time:0
+        }
+        player.health.current--
+    }
 }
 
 function spawnEnemy(){
@@ -53,6 +72,7 @@ function tick(){
     }
     if(gameState==1){
         playerTick()
+        healthTick()
         enemyTick()
         cameraTick()
         draw()    
@@ -173,7 +193,49 @@ function drawPlayer(){
     ctx.fillRect(0,-5,70,10)
     ctx.fillStyle = "#afbfaf"
     ctx.fillRect(5-50,5-50,90,90)
+    ctx.fillStyle = "#33363f"
+    ctx.fillRect(-50,-50,100,30)
+    ctx.fillStyle = "#afbfaf"
+    ctx.fillRect(5-50,5-50,90,20)
+    ctx.fillStyle = "#cfcfaf"
+    ctx.fillRect(5-50,5-50,90/(player.health.max/player.health.current),20)
     ctx.restore()
+    drawHealth()
+
+}
+
+function drawHealth(){
+    for(let i = 0;i<healthPoints.length;i++){
+        ctx.save()
+        ctx.translate(healthPoints[i].position.x,healthPoints[i].position.y)
+        ctx.rotate(healthPoints[i].rotation*Math.PI/180)
+        ctx.fillStyle = "#33363f"
+        ctx.fillRect(-25,-25,50,50)
+        ctx.fillStyle = "#afbfaf"
+        ctx.fillRect(-20,-20,40,40)
+        ctx.restore()
+    }
+
+}
+
+function healthTick(){
+    for(let i = 0;i<healthPoints.length;i++){
+        healthPoints[i].position.x += healthPoints[i].velocity.x
+        healthPoints[i].position.y += healthPoints[i].velocity.y
+        healthPoints[i].velocity.x*=.95
+        healthPoints[i].velocity.y*=.95
+        healthPoints[i].rotation+=1
+        healthPoints[i].time++
+        if(
+                Math.abs(player.position.x-healthPoints[i].position.x)<75
+            &&  Math.abs(player.position.y-healthPoints[i].position.y)<75
+            &&  healthPoints[i].time>30
+            &&  player.health.current<player.health.max
+        ){
+            healthPoints.splice(i,1)
+            player.health.current++
+        }
+    }
 
 }
 

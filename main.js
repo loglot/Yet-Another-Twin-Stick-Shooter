@@ -18,7 +18,8 @@ var mouse = {x:0,y:0},
     enemies = [],
     gameState = 1,
     deathAlpha = 0,
-    healthPoints = []
+    healthPoints = [],
+    enemyTimer = 0
 
 document.addEventListener("mousemove", function(e) {
     mouse = {
@@ -49,10 +50,11 @@ function click(){
 }
 
 function spawnEnemy(){
+    var random = Math.random()*2-1
     enemies[enemies.length]={
         position:{
-            x:(Math.random()*1000-500)+player.position.x,
-            y:(Math.random()*1000-500)+player.position.y
+            x:(Math.sin(random*Math.PI)*1000)+player.position.x,
+            y:(Math.cos(random*Math.PI)*1000)+player.position.y
         }, 
         
         velocity:{x:0,y:0},
@@ -75,18 +77,28 @@ function tick(){
         healthTick()
         enemyTick()
         cameraTick()
-        draw()    
     }
+    draw()    
 }
 
 function draw(){
-    ctx.fillStyle = "rgb(167, 216, 216)"
+    ctx.fillStyle = "#90b0c0"
     ctx.fillRect(0,0,10000,10000)
     ctx.fillStyle = "rgb(167,199,16)"
     translate()
     ctx.fillRect(mouseWorld.x-5,mouseWorld.y-5,10,10)
     drawPlayer()
     drawEnemies()
+    if(gameState==0){
+        ctx.resetTransform()
+        ctx.fillStyle = "#90b0c0aa"
+        ctx.fillRect(0,0,10000,10000)
+        ctx.font = "bold 48px Sans-serif";
+        ctx.fillStyle = "#fff"
+        ctx.lineWidth = 5;
+        ctx.strokeText("you died.", 100, 100)
+        ctx.fillText("you died.", 100, 100)
+    }
 
 }
 
@@ -121,6 +133,9 @@ function playerTick(){
     player.velocity.x*=.95
     player.velocity.y*=.95
     player.hit-=.01
+    if(player.health.current<=0){
+        failState()
+    }
 }
 
 function enemyTick(){
@@ -148,12 +163,27 @@ function enemyTick(){
         enemies[i].velocity.y *= enemies[i].friction
 
         if(Math.abs(player.position.x-enemies[i].position.x)<100&&Math.abs(player.position.y-enemies[i].position.y)<100){
-            if(player.hit>.3){
+            if(player.hit>.7){
+                if(Math.random()<.4){
+
+                    healthPoints[healthPoints.length] = {
+                        position:{x:enemies[i].position.x,y:enemies[i].position.y},
+                        velocity:{x:-enemies[i].velocity.x,y:-enemies[i].velocity.y},
+                        rotation:0,
+                        time:0
+                    }
+                }
                 enemies.splice(i,1)
             }else{
-                failState()
+                player.health.current--
+                enemies.splice(i,1)
             }
         }
+    }
+    enemyTimer++
+    if(enemyTimer==100){
+        spawnEnemy()
+        enemyTimer=0
     }
 
 }

@@ -19,7 +19,35 @@ var mouse = {x:0,y:0},
     gameState = 1,
     deathAlpha = 0,
     healthPoints = [],
-    enemyTimer = 0
+    enemyTimer = 0,
+    shop = {position:{x:0,y:-250}},
+    shopItemList = [
+        {
+            Title:"Health Upgrade",
+            Description:[
+                "gives +5 max health",
+                "reusable"
+            ],
+            price:4,
+            purchase:function(){
+
+            }
+
+        },
+        {
+            Title:"Health Downgrade",
+            Description:[
+                "gives -3 max health",
+                "reusable"
+            ],
+            price:-2,
+            purchase:function(){
+
+            }
+
+        }
+    ],
+    shopStorage = [0,1]
 
 document.addEventListener("mousemove", function(e) {
     mouse = {
@@ -29,7 +57,9 @@ document.addEventListener("mousemove", function(e) {
 })
 document.addEventListener("mousedown", (event) => {
     if (event.button == 0) {
-        click()
+        if(gameState==1){
+            click()
+        }
     }
 }, false);
 
@@ -68,11 +98,12 @@ function spawnEnemy(){
 function tick(){
     requestAnimationFrame(tick)
     resize()
-    mouseWorld = {
-        x:mouse.x+(camera.position.x-(display.startWidth/2)),
-        y:mouse.y+(camera.position.y-(display.aspectRatio[1]*display.startWidth/display.aspectRatio[0])/2)
-    }
     if(gameState==1){
+        mouseWorld = {
+            x:mouse.x+(camera.position.x-(display.startWidth/2)),
+            y:mouse.y+(camera.position.y-(display.aspectRatio[1]*display.startWidth/display.aspectRatio[0])/2)
+        }
+        shopTick()
         playerTick()
         healthTick()
         enemyTick()
@@ -87,21 +118,53 @@ function draw(){
     ctx.fillStyle = "rgb(167,199,16)"
     translate()
     ctx.fillRect(mouseWorld.x-5,mouseWorld.y-5,10,10)
+    drawShop()
     drawPlayer()
     drawEnemies()
+    untranslate()
+    drawMenus()
+
+}
+function drawMenus(){
+    ctx.beginPath()
     if(gameState==0){
-        ctx.resetTransform()
         ctx.fillStyle = "#90b0c0aa"
         ctx.fillRect(0,0,10000,10000)
         ctx.font = "bold 48px Sans-serif";
         ctx.fillStyle = "#fff"
         ctx.lineWidth = 5;
+        ctx.strokeStyle="#000"
         ctx.strokeText("you died.", 100, 100)
         ctx.fillText("you died.", 100, 100)
     }
+    if(gameState==2){
+        var count = 2,
+            width = 490,
+            offset = 100,
+            height = 740
+        ctx.fillStyle = "#000a"
+        ctx.fillRect(0,0,10000,10000)
+        for(let i = 0; i<count;i++){
+        ctx.fillStyle = "#000a"
+            ctx.fillRect(offset+(width+offset)*i,offset,width,height)
+            ctx.font = "bold 48px Sans-serif";
+            ctx.fillStyle = "#fff"
+            ctx.lineWidth = 5;
+            ctx.strokeStyle="#000"
+            ctx.strokeText(`${shopItemList[shopStorage[i]].Title}: `, 110+(width+offset)*i, 150)
+            ctx.fillText(`${shopItemList[shopStorage[i]].Title}: `, 110+(width+offset)*i, 150)
+            for(let r = 0;r<shopItemList[shopStorage[i]].Description.length;r++){
+                ctx.strokeText(`${shopItemList[shopStorage[i]].Description[r]} `, 110+(width+offset)*i, 300 + (50*r))
+                ctx.fillText(`${shopItemList[shopStorage[i]].Description[r]} `, 110+(width+offset)*i, 300 + (50*r))
+            }
+            ctx.fillText(`Costs : ${shopItemList[shopStorage[i]].price}HP `, 110+(width+offset)*i, 800)
+
+
+        }
+
+    }
 
 }
-
 function cameraTick(){
     camera.position.x=(camera.position.x*10+player.position.x)/11
     camera.position.y=(camera.position.y*10+player.position.y)/11
@@ -110,6 +173,11 @@ function cameraTick(){
 function translate(){
     
     ctx.translate(-(camera.position.x-(display.startWidth/2)),-(camera.position.y-(display.aspectRatio[1]*display.startWidth/display.aspectRatio[0])/2))
+}
+
+function untranslate(){
+    
+    ctx.translate((camera.position.x-(display.startWidth/2)),(camera.position.y-(display.aspectRatio[1]*display.startWidth/display.aspectRatio[0])/2))
 }
 
 function playerTick(){
@@ -127,9 +195,18 @@ function playerTick(){
     if(kd.S.isDown()){
         player.velocity.y+=1
     }
-    if(kd.E.isDown()){
+    if(kd.K.isDown()){
         spawnEnemy()
     }
+    if(kd.E.isDown()){
+        if(
+            Math.abs(player.position.x)-Math.abs(shop.position.x)<150
+        &&  Math.abs(player.position.y)-Math.abs(shop.position.y)<150
+        ){
+            gameState=2
+        }
+    }
+
     player.velocity.x*=.95
     player.velocity.y*=.95
     player.hit-=.01
@@ -241,7 +318,7 @@ function drawHealth(){
         ctx.rotate(healthPoints[i].rotation*Math.PI/180)
         ctx.fillStyle = "#33363f"
         ctx.fillRect(-25,-25,50,50)
-        ctx.fillStyle = "#afbfaf"
+        ctx.fillStyle = "#cfcfaf"
         ctx.fillRect(-20,-20,40,40)
         ctx.restore()
     }
@@ -267,6 +344,46 @@ function healthTick(){
         }
     }
 
+}
+
+function drawShop(){
+    
+    ctx.beginPath(); 
+    ctx.moveTo(shop.position.x,shop.position.y); 
+    ctx.lineTo(player.position.x,player.position.y); 
+    ctx.lineWidth=30
+    ctx.strokeStyle="#6b4101"
+    ctx.stroke();
+    ctx.lineWidth=25
+    ctx.strokeStyle="#A06000"
+    ctx.stroke();
+    ctx.closePath()
+
+    ctx.save()
+    ctx.translate(shop.position.x,shop.position.y)
+    ctx.rotate(-(shop.position.x-player.position.x)/1000)
+    ctx.beginPath(); 
+    ctx.fillStyle = "#33363f"
+    ctx.arc(0, -100, 55, 0, 2 * Math.PI);
+    ctx.fill()
+    ctx.fillRect(-100,-100,200,200)
+    ctx.closePath()
+    ctx.fillStyle = "#afafaf"
+    ctx.fillRect(5-100,5-100,190,190)
+    ctx.beginPath(); 
+    ctx.arc(0, -100, 50, 0, 2 * Math.PI);//#dfdf8d
+    ctx.fillStyle = "#afaf8f"
+    ctx.fill()
+    ctx.beginPath(); 
+    ctx.arc(0, -100, 45, 0, 2 * Math.PI);//#dfdf8d
+    ctx.fillStyle = "#cfcfaf"
+    ctx.fill()
+    ctx.restore()
+
+}
+function shopTick(){
+    shop.position.x-=(shop.position.x-player.position.x)/50
+    shop.position.y-=(shop.position.y-player.position.y)/50
 }
 
 function resize(){

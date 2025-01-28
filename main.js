@@ -8,12 +8,17 @@ var mouse = {x:0,y:0},
         position:{x:0,y:0}, 
         velocity:{x:0,y:0}, 
         hit:0,
-        health:{current:5,max:5}
+        health:{current:5,max:5},
+        power:{
+            name:"none",
+            currentCharge:0,
+            targetCharge:500,
+        }
+
     },
 
 
     camera = {position:{x:0,y:0}, velocity:{x:0,y:0}},
-    basicEnemy = {position:{x:0,y:0}, velocity:{x:0,y:0}},
     display = {startWidth:1280, aspectRatio:[4,3], scale:0},
     enemies = [],
     gameState = 1,
@@ -25,23 +30,24 @@ var mouse = {x:0,y:0},
         {
             Title:"Health Upgrade",
             Description:[
-                "gives +1 max health",
-                "reusable"
+                "something ain't right",
+                "please report to developer"
             ],
             price:1,
             purchase:function(){
 
                 player.health.max += Math.ceil(this.price/2)
                 player.health.current -= this.price
-                this.price*=2
-                this.Description=[
-                    `gives +${Math.ceil(this.price/2)} max health`,
-                    "reusable"
-                ]
+                
                 shopMenuVals.selection=2
             },
             type:"HP",
             purchaseCheck:function(){
+                this.price=Math.ceil(player.health.max/2)
+                this.Description=[
+                    `gives +${Math.ceil(this.price/2)} max health`,
+                    "<Reusable>"
+                ]
                 if(player.health.current-this.price<=0){
                     return false
                 }
@@ -50,15 +56,15 @@ var mouse = {x:0,y:0},
 
         },
         {
-            Title:"Health Downgrade",
+            Title:"Desperation",
             Description:[
-                "gives 1 HP",
-                "reusable"
+                "gives 2 HP",
+                "<Reusable>"
             ],
-            price:2,
+            price:3,
             purchase:function(){
-                spawnHealthRandom(shop)
-                player.health.max-=2
+                spawnHealthRandom(shop,2)
+                player.health.max-=this.price
                 while(player.health.current>player.health.max){
                     player.health.current--
                     spawnHealthRandom(player)
@@ -74,20 +80,58 @@ var mouse = {x:0,y:0},
             }
 
 
+        },
+        {
+            Title:"ShockWave",
+            Description:[
+                "something ain't right",
+                "please report to developer"
+            ],
+            price:2,
+            purchase:function(){
+                player.power.name="ShockWave"
+                player.health.max-=this.price
+                while(player.health.current>player.health.max){
+                    player.health.current--
+                    spawnHealthRandom(player)
+                }
+                shopMenuVals.selection=2
+            },
+            type:" MAX HP",
+            purchaseCheck:function(){
+
+                this.Description=[
+                    "Push Back Enemies",
+                    "<Ability>",
+                    "",
+                    "",
+                    "",
+                    `REPLACES : `,
+                    `[${player.power.name}]`
+                ]
+                if(player.health.max-this.price<=1){
+                    return false
+                }
+                return true
+            }
+
+
         }
     ],
-    shopStorage = [0,1],
+    shopStorage = [0,2],
     shopMenuVals={
         selection:2
     }
 
-    function spawnHealthRandom(target=player){
-
-        healthPoints[healthPoints.length] = {
-            position:{x:target.position.x,y:target.position.y},
-            velocity:{x:(Math.random()-.5)*20,y:(Math.random()-.5)*20},
-            rotation:Math.random()*500,
-            time:0
+    function spawnHealthRandom(target=player, count=1){
+        for(let i = 0; i < count; i++){
+            healthPoints[healthPoints.length] = {
+                position:{x:target.position.x,y:target.position.y},
+                velocity:{x:(Math.random()-.5)*20,y:(Math.random()-.5)*20},
+                rotation:Math.random()*500,
+                time:0
+            }
+    
         }
     }
 
@@ -103,7 +147,32 @@ document.addEventListener("mousedown", (event) => {
             click()
         }
     }
+    if (event.button == 2) {
+        if(gameState==1){
+            rclick()
+
+        }
+
+    }
 }, false);
+
+document.addEventListener("contextmenu", (event) => {
+    event.preventDefault()
+
+})
+function rclick(){
+    if(player.power.currentCharge==player.power.targetCharge){
+        player.power.currentCharge=0
+        if(player.power.name=="ShockWave"){
+            for(let i = 0; i<enemies.length;i++){
+                var Dist=Math.abs(enemies[i].position.x-player.position.x)+Math.abs(enemies[i].position.y-player.position.y)
+                var Val = Math.max(-Dist+500,0)/100
+                enemies[i].velocity.x=-((player.position.x-enemies[i].position.x)*Val)/10
+                enemies[i].velocity.y=-((player.position.y-enemies[i].position.y)*Val)/10
+            }
+        }
+    }
+}
 
 function click(){
     if(player.health.current>1){
@@ -164,8 +233,12 @@ function menuTick(){
             shopMenuVals.selection=1
             
         }
+        if(kd.UP.isDown()){
+            shopMenuVals.selection=3
+            
+        }
         if(kd.ENTER.isDown()){
-            if(!(shopMenuVals.selection==2)){
+            if(!(shopMenuVals.selection>=2)){
                 if(shopItemList[shopStorage[shopMenuVals.selection]].purchaseCheck()&&!(shopMenuVals.selection==2)){
 
                     shopItemList[shopStorage[shopMenuVals.selection]].purchase()
@@ -173,6 +246,9 @@ function menuTick(){
                 
                 }
                 
+            }
+            if(shopMenuVals.selection==3){
+                rerollShop()
             }
             
         }
@@ -184,12 +260,18 @@ function menuTick(){
         
     }
 }
+function rerollShop(){
+    
+}
 
 function draw(){
     ctx.fillStyle = "#90b0c0"
     ctx.fillRect(0,0,10000,10000)
-    ctx.fillStyle = "rgb(167,199,16)"
     translate()
+    ctx.fillStyle = "rgb(0,0,0)"
+    ctx.fillRect(mouseWorld.x-15,mouseWorld.y-2,30,4)
+    ctx.fillRect(mouseWorld.x-2,mouseWorld.y-15,4,30)
+    ctx.fillStyle = "rgb(255, 255, 253)"
     ctx.fillRect(mouseWorld.x-5,mouseWorld.y-5,10,10)
     drawShop()
     drawPlayer()
@@ -219,17 +301,20 @@ function drawMenus(){
         ctx.fillRect(0,0,10000,10000)
         for(let i = 0; i<count;i++){
         ctx.fillStyle = "#000a"
+        ctx.strokeStyle="#000a"
             ctx.beginPath()
             ctx.rect(offset+(width+offset)*i,offset,width,height)
             ctx.fill()
+            
             if(shopMenuVals.selection==i){
                 ctx.strokeStyle="#fff"
-                if(!shopItemList[shopMenuVals.selection].purchaseCheck()){
-                    ctx.strokeStyle="#faa"
-                }
-                ctx.lineWidth = 5;
-                ctx.stroke()
             }
+            if(!shopItemList[shopStorage[i]].purchaseCheck()){
+                ctx.strokeStyle="#faa"
+            }
+            ctx.lineWidth = 5;
+            ctx.stroke()
+            ctx.beginPath()
             ctx.font = "bold 48px Sans-serif";
             ctx.fillStyle = "#fff"
             ctx.lineWidth = 5;
@@ -242,6 +327,7 @@ function drawMenus(){
                 ctx.strokeText(`${shopItemList[shopStorage[i]].Description[r]} `, 100+(width/2)+(width+offset)*i, 300 + (50*r))
                 ctx.fillText(`${shopItemList[shopStorage[i]].Description[r]} `, 100+(width/2)+(width+offset)*i, 300 + (50*r))
             }
+            ctx.beginPath()
             ctx.fillText(`Costs : ${shopItemList[shopStorage[i]].price+""+shopItemList[shopStorage[i]].type} `, 100+(width/2)+(width+offset)*i, 750)
             if(shopMenuVals.selection==i){
                 ctx.fillText(`▼`, 100+(width/2)+(width+offset)*i, 90)
@@ -249,9 +335,20 @@ function drawMenus(){
             }
 
         }
+        ctx.beginPath()
         ctx.fillText(`<==`, 1280/2-50, 900)
         ctx.fillText(`==>`, 1280/2+50, 900)
-        ctx.fillText(`${player.health.current+"/"+player.health.max}`, 1280/2, 100)
+        ctx.fillText(`${player.health.current+"/"+player.health.max}`, 1280/2, 960/2)
+        ctx.fillText(`Reroll : ${Math.ceil(player.health.max/4)}HP`, 1280/2, 50)
+        if(shopMenuVals.selection==3){
+
+            ctx.fillText(`▲`, 1280/2, 90)
+            ctx.beginPath()
+            ctx.strokeStyle="#fff"
+        }
+        ctx.beginPath()
+        ctx.rect(1280/2-150,20,300,60)
+        ctx.stroke()
 
 
     }
@@ -304,6 +401,9 @@ function playerTick(){
     player.hit-=.01
     if(player.health.current<=0){
         failState()
+    }
+    if(player.power.currentCharge<player.power.targetCharge){
+        player.power.currentCharge++
     }
 }
 
@@ -385,19 +485,33 @@ function drawPlayer(){
     console.log(mouseWorld.x, player.position.x)
     ctx.fillStyle = "#33363f"
     ctx.fillRect(-50,-50,100,100)
-    if(player.hit>.8){
-    ctx.fillStyle = "#33a63f"
-
-    }
     ctx.fillRect(0,-5,70,10)
     ctx.fillStyle = "#afbfaf"
     ctx.fillRect(5-50,5-50,90,90)
+
     ctx.fillStyle = "#33363f"
     ctx.fillRect(-50,-50,100,30)
     ctx.fillStyle = "#afbfaf"
     ctx.fillRect(5-50,5-50,90,20)
     ctx.fillStyle = "#cfcfaf"
     ctx.fillRect(5-50,5-50,90/(player.health.max/player.health.current),20)
+
+    if((player.power.name!="none")){
+        ctx.fillStyle = "#33363f"
+        ctx.fillRect(-50,20,100,30)
+        ctx.fillStyle = "#afbfaf"
+        ctx.fillRect(5-50,5+20,90,20)
+        ctx.fillStyle = "#dfbfdf"
+        ctx.fillRect(5-50,5+20,90/(player.power.targetCharge/player.power.currentCharge),20)
+    
+    }
+
+    ctx.fillStyle = "#33363f"
+    if(player.hit>.8){
+        ctx.fillStyle = "#a3363f"
+    
+    }
+    ctx.fillRect(-50,5-50,5,90)
     ctx.restore()
     drawHealth()
 

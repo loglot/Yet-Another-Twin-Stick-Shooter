@@ -25,29 +25,71 @@ var mouse = {x:0,y:0},
         {
             Title:"Health Upgrade",
             Description:[
-                "gives +5 max health",
+                "gives +1 max health",
                 "reusable"
             ],
-            price:4,
+            price:1,
             purchase:function(){
 
+                player.health.max += Math.ceil(this.price/2)
+                player.health.current -= this.price
+                this.price*=2
+                this.Description=[
+                    `gives +${Math.ceil(this.price/2)} max health`,
+                    "reusable"
+                ]
+                shopMenuVals.selection=2
+            },
+            type:"HP",
+            purchaseCheck:function(){
+                if(player.health.current-this.price<=0){
+                    return false
+                }
+                return true
             }
 
         },
         {
             Title:"Health Downgrade",
             Description:[
-                "gives -3 max health",
+                "gives 1 HP",
                 "reusable"
             ],
-            price:-2,
+            price:2,
             purchase:function(){
-
+                spawnHealthRandom(shop)
+                player.health.max-=2
+                while(player.health.current>player.health.max){
+                    player.health.current--
+                    spawnHealthRandom(player)
+                }
+                shopMenuVals.selection=2
+            },
+            type:" MAX HP",
+            purchaseCheck:function(){
+                if(player.health.max-this.price<=1){
+                    return false
+                }
+                return true
             }
+
 
         }
     ],
-    shopStorage = [0,1]
+    shopStorage = [0,1],
+    shopMenuVals={
+        selection:2
+    }
+
+    function spawnHealthRandom(target=player){
+
+        healthPoints[healthPoints.length] = {
+            position:{x:target.position.x,y:target.position.y},
+            velocity:{x:(Math.random()-.5)*20,y:(Math.random()-.5)*20},
+            rotation:Math.random()*500,
+            time:0
+        }
+    }
 
 document.addEventListener("mousemove", function(e) {
     mouse = {
@@ -109,7 +151,38 @@ function tick(){
         enemyTick()
         cameraTick()
     }
+    menuTick()
     draw()    
+}
+
+function menuTick(){
+    if(gameState==2){
+        if(kd.LEFT.isDown()){
+            shopMenuVals.selection=0
+        }
+        if(kd.RIGHT.isDown()){
+            shopMenuVals.selection=1
+            
+        }
+        if(kd.ENTER.isDown()){
+            if(!(shopMenuVals.selection==2)){
+                if(shopItemList[shopStorage[shopMenuVals.selection]].purchaseCheck()&&!(shopMenuVals.selection==2)){
+
+                    shopItemList[shopStorage[shopMenuVals.selection]].purchase()
+                    shopMenuVals.selection=2
+                
+                }
+                
+            }
+            
+        }
+        if(kd.BACKSPACE.isDown()){
+            gameState=1
+        }
+    }
+    if(gameState==0){
+        
+    }
 }
 
 function draw(){
@@ -146,21 +219,40 @@ function drawMenus(){
         ctx.fillRect(0,0,10000,10000)
         for(let i = 0; i<count;i++){
         ctx.fillStyle = "#000a"
-            ctx.fillRect(offset+(width+offset)*i,offset,width,height)
+            ctx.beginPath()
+            ctx.rect(offset+(width+offset)*i,offset,width,height)
+            ctx.fill()
+            if(shopMenuVals.selection==i){
+                ctx.strokeStyle="#fff"
+                if(!shopItemList[shopMenuVals.selection].purchaseCheck()){
+                    ctx.strokeStyle="#faa"
+                }
+                ctx.lineWidth = 5;
+                ctx.stroke()
+            }
             ctx.font = "bold 48px Sans-serif";
             ctx.fillStyle = "#fff"
             ctx.lineWidth = 5;
             ctx.strokeStyle="#000"
-            ctx.strokeText(`${shopItemList[shopStorage[i]].Title}: `, 110+(width+offset)*i, 150)
-            ctx.fillText(`${shopItemList[shopStorage[i]].Title}: `, 110+(width+offset)*i, 150)
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "center";
+            ctx.strokeText(`${shopItemList[shopStorage[i]].Title}: `, 100+(width/2)+(width+offset)*i, 150)
+            ctx.fillText(`${shopItemList[shopStorage[i]].Title}: `, 100+(width/2)+(width+offset)*i, 150)
             for(let r = 0;r<shopItemList[shopStorage[i]].Description.length;r++){
-                ctx.strokeText(`${shopItemList[shopStorage[i]].Description[r]} `, 110+(width+offset)*i, 300 + (50*r))
-                ctx.fillText(`${shopItemList[shopStorage[i]].Description[r]} `, 110+(width+offset)*i, 300 + (50*r))
+                ctx.strokeText(`${shopItemList[shopStorage[i]].Description[r]} `, 100+(width/2)+(width+offset)*i, 300 + (50*r))
+                ctx.fillText(`${shopItemList[shopStorage[i]].Description[r]} `, 100+(width/2)+(width+offset)*i, 300 + (50*r))
             }
-            ctx.fillText(`Costs : ${shopItemList[shopStorage[i]].price}HP `, 110+(width+offset)*i, 800)
+            ctx.fillText(`Costs : ${shopItemList[shopStorage[i]].price+""+shopItemList[shopStorage[i]].type} `, 100+(width/2)+(width+offset)*i, 750)
+            if(shopMenuVals.selection==i){
+                ctx.fillText(`▼`, 100+(width/2)+(width+offset)*i, 90)
 
+            }
 
         }
+        ctx.fillText(`<==`, 1280/2-50, 900)
+        ctx.fillText(`==>`, 1280/2+50, 900)
+        ctx.fillText(`${player.health.current+"/"+player.health.max}`, 1280/2, 100)
+
 
     }
 

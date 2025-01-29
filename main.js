@@ -1,6 +1,9 @@
 const canvas = document.getElementById("screen")
 const ctx = canvas.getContext("2d")
-
+window.onerror = function(msg, url, linenumber) {
+    alert('Error message: '+msg+'\nURL: '+url+'\nLine Number: '+linenumber);
+    return true;
+}
 var mouse = {x:0,y:0},
     mouseWorld = {x:0,y:0},
 
@@ -12,12 +15,16 @@ var mouse = {x:0,y:0},
         power:{
             name:"none",
             currentCharge:0,
-            targetCharge:500,
-        }
+            targetCharge:250,
+        },
+        KB:1
 
     },
 
-
+    tickFuncs={
+        modifier:function(){return false},
+        power:function(){return false},
+    },
     camera = {position:{x:0,y:0}, velocity:{x:0,y:0}},
     display = {startWidth:1280, aspectRatio:[4,3], scale:0},
     enemies = [],
@@ -25,7 +32,14 @@ var mouse = {x:0,y:0},
     deathAlpha = 0,
     healthPoints = [],
     enemyTimer = 0,
-    shop = {position:{x:0,y:-250}},
+    shop = {
+        position:{x:0,y:-250}, 
+        modifier:{
+            name:"none",
+            currentCharge:0,
+            targetCharge:500,
+        }
+    },
     killCount=0,
     shopItemList = [
         {
@@ -74,6 +88,75 @@ var mouse = {x:0,y:0},
             },
             type:" MAX HP",
             purchaseCheck:function(){
+                if(player.health.max-this.price<=1){
+                    return false
+                }
+                return true
+            }
+
+
+        },
+        {
+            Title:"KnockBack Up",
+            Description:[
+                "makes you go",
+                "flying back",
+                "even farther",
+                "<Reusable>"
+            ],
+            price:5,
+            purchase:function(){
+                player.health.current-=this.price
+                player.KB+=5
+                shopMenuVals.selection=2
+                this.price*=2
+            },
+            type:" HP",
+            purchaseCheck:function(){
+                if(player.health.current-this.price<=1){
+                    return false
+                }
+                return true
+            }
+
+
+        },
+        {
+            Title:"Spawn Health",
+            Description:[
+                "something ain't right",
+                "please report to developer"
+            ],
+            price:10,
+            purchase:function(){
+                shop.modifier.name="Spawn Health"
+                player.health.max-=this.price
+                while(player.health.current>player.health.max){
+                    player.health.current--
+                    spawnHealthRandom(player)
+                }
+                shopMenuVals.selection=2
+                tickFuncs.modifier=function(){
+                    shop.modifier.currentCharge++
+                    if(shop.modifier.currentCharge>=shop.modifier.targetCharge){
+                        spawnHealthRandom(shop,1)
+                        shop.modifier.currentCharge=0
+                    }
+                    
+                }
+            },
+            type:" MAX HP",
+            purchaseCheck:function(){
+
+                this.Description=[
+                    "Shop will sometimes",
+                    "spawn health",
+                    "<Modifier>",
+                    "",
+                    "",
+                    `REPLACES : `,
+                    `[${shop.modifier.name}]`
+                ]
                 if(player.health.max-this.price<=1){
                     return false
                 }
@@ -305,8 +388,15 @@ function click(){
         shoot = new Audio(`./assets/shoot${Math.ceil(Math.random()*3)}.wav`)
         shoot.play()
 
-        player.velocity.x=(player.position.x-mouseWorld.x)/10
-        player.velocity.y=(player.position.y-mouseWorld.y)/10
+        var diffX = (mouseWorld.x) - (player.position.x);
+        var diffY = (mouseWorld.y) - (player.position.y); 
+        var mouseDistance = (diffX ** 2 + diffY ** 2) ** 0.5;
+
+        var x =diffX / mouseDistance;
+        var y =diffY / mouseDistance;
+
+        player.velocity.x=-(x)*20*player.KB
+        player.velocity.y=-(y)*20*player.KB
         player.hit=1
         healthPoints[healthPoints.length] = {
             position:{x:player.position.x,y:player.position.y},
@@ -347,6 +437,8 @@ function tick(){
         healthTick()
         enemyTick()
         cameraTick()
+        tickFuncs.power()
+        tickFuncs.modifier()
     }
     menuTick()
     draw()    
@@ -379,7 +471,7 @@ function menuTick(){
                 if(player.health.current-Math.ceil(player.health.max/4)>0){
 
                     rerollShop()
-                    player.health.current-=Math.ceil(player.health.max/4)
+                    player.health.current-=Math.ceil(player.health.max/10)
     
                 }
             }
@@ -514,7 +606,7 @@ function drawMenus(){
         ctx.fillText(`<==`, 1280/2-50, 900)
         ctx.fillText(`==>`, 1280/2+50, 900)
         ctx.fillText(`${player.health.current+"/"+player.health.max}`, 1280/2, 960/2)
-        ctx.fillText(`Reroll : ${Math.ceil(player.health.max/4)}HP`, 1280/2, 50)
+        ctx.fillText(`Reroll : ${Math.ceil(player.health.max/10)}HP`, 1280/2, 50)
         if(shopMenuVals.selection==3){
 
             ctx.fillText(`▲`, 1280/2, 90)

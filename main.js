@@ -302,6 +302,8 @@ function rclick(){
 
 function click(){
     if(player.health.current>1){
+        shoot = new Audio(`../assets/shoot${Math.ceil(Math.random()*3)}.wav`)
+        shoot.play()
 
         player.velocity.x=(player.position.x-mouseWorld.x)/10
         player.velocity.y=(player.position.y-mouseWorld.y)/10
@@ -594,6 +596,8 @@ function enemyTick(){
 
         if(Math.abs(player.position.x-enemies[i].position.x)<100&&Math.abs(player.position.y-enemies[i].position.y)<100){
             if(player.hit>.7){
+                kill = new Audio(`../assets/kill${Math.ceil(Math.random()*3)}.wav`)
+                kill.play()
                 if(Math.random()<.4){
 
                     healthPoints[healthPoints.length] = {
@@ -606,6 +610,8 @@ function enemyTick(){
                 enemies.splice(i,1)
                 killCount++
             }else{
+                hurt = new Audio(`../assets/hurt${Math.ceil(Math.random()*3)}.wav`)
+                hurt.play()
                 player.health.current--
                 enemies.splice(i,1)
             }
@@ -618,7 +624,10 @@ function enemyTick(){
     }
 
 }
-
+var hurt
+var kill
+var shoot
+var heal
 function failState(){
     gameState=0
     deathAlpha=1
@@ -708,6 +717,8 @@ function healthTick(){
         ){
             healthPoints.splice(i,1)
             player.health.current++
+            heal = new Audio(`../assets/heal${Math.ceil(Math.random()*3)}.wav`)
+            heal.play()
         }
     }
 

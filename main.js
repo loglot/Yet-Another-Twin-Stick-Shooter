@@ -21,11 +21,12 @@ var mouse = {x:0,y:0},
     camera = {position:{x:0,y:0}, velocity:{x:0,y:0}},
     display = {startWidth:1280, aspectRatio:[4,3], scale:0},
     enemies = [],
-    gameState = 1,
+    gameState = 3,
     deathAlpha = 0,
     healthPoints = [],
     enemyTimer = 0,
     shop = {position:{x:0,y:-250}},
+    killCount=0,
     shopItemList = [
         {
             Title:"Health Upgrade",
@@ -123,6 +124,131 @@ var mouse = {x:0,y:0},
         selection:2
     }
 
+    function restart(){
+        mouse = {x:0,y:0}
+        mouseWorld = {x:0,y:0}
+
+        player = {
+            position:{x:0,y:0}, 
+            velocity:{x:0,y:0}, 
+            hit:0,
+            health:{current:5,max:5},
+            power:{
+                name:"none",
+                currentCharge:0,
+                targetCharge:500,
+            }
+
+        }
+
+
+        camera = {position:{x:0,y:0}, velocity:{x:0,y:0}}
+        display = {startWidth:1280, aspectRatio:[4,3], scale:0}
+        enemies = []
+        deathAlpha = 0
+        healthPoints = []
+        enemyTimer = 0
+        shop = {position:{x:0,y:-250}}
+        killCount=0
+        shopItemList = [
+            {
+                Title:"Health Upgrade",
+                Description:[
+                    "something ain't right",
+                    "please report to developer"
+                ],
+                price:1,
+                purchase:function(){
+
+                    player.health.max += Math.ceil(this.price/2)
+                    player.health.current -= this.price
+                    
+                    shopMenuVals.selection=2
+                },
+                type:"HP",
+                purchaseCheck:function(){
+                    this.price=Math.ceil(player.health.max/2)
+                    this.Description=[
+                        `gives +${Math.ceil(this.price/2)} max health`,
+                        "<Reusable>"
+                    ]
+                    if(player.health.current-this.price<=0){
+                        return false
+                    }
+                    return true
+                }
+
+            },
+            {
+                Title:"Desperation",
+                Description:[
+                    "gives 2 HP",
+                    "<Reusable>"
+                ],
+                price:3,
+                purchase:function(){
+                    spawnHealthRandom(shop,2)
+                    player.health.max-=this.price
+                    while(player.health.current>player.health.max){
+                        player.health.current--
+                        spawnHealthRandom(player)
+                    }
+                    shopMenuVals.selection=2
+                },
+                type:" MAX HP",
+                purchaseCheck:function(){
+                    if(player.health.max-this.price<=1){
+                        return false
+                    }
+                    return true
+                }
+
+
+            },
+            {
+                Title:"ShockWave",
+                Description:[
+                    "something ain't right",
+                    "please report to developer"
+                ],
+                price:2,
+                purchase:function(){
+                    player.power.name="ShockWave"
+                    player.health.max-=this.price
+                    while(player.health.current>player.health.max){
+                        player.health.current--
+                        spawnHealthRandom(player)
+                    }
+                    shopMenuVals.selection=2
+                },
+                type:" MAX HP",
+                purchaseCheck:function(){
+
+                    this.Description=[
+                        "Push Back Enemies",
+                        "<Ability>",
+                        "",
+                        "",
+                        "",
+                        `REPLACES : `,
+                        `[${player.power.name}]`
+                    ]
+                    if(player.health.max-this.price<=1){
+                        return false
+                    }
+                    return true
+                }
+
+
+            }
+        ],
+        shopStorage = [0,2]
+        shopMenuVals={
+            selection:2
+        }
+
+    }
+
     function spawnHealthRandom(target=player, count=1){
         for(let i = 0; i < count; i++){
             healthPoints[healthPoints.length] = {
@@ -166,7 +292,7 @@ function rclick(){
         if(player.power.name=="ShockWave"){
             for(let i = 0; i<enemies.length;i++){
                 var Dist=Math.abs(enemies[i].position.x-player.position.x)+Math.abs(enemies[i].position.y-player.position.y)
-                var Val = Math.max(-Dist+500,0)/100
+                var Val = Math.max(-Dist+500,0)/70
                 enemies[i].velocity.x=-((player.position.x-enemies[i].position.x)*Val)/10
                 enemies[i].velocity.y=-((player.position.y-enemies[i].position.y)*Val)/10
             }
@@ -258,6 +384,15 @@ function menuTick(){
     }
     if(gameState==0){
         
+        if(kd.ENTER.isDown()){
+            gameState=1
+            restart()
+        }
+    }
+    if(gameState==3){
+        if(kd.W.isDown()){
+            gameState=1
+        }
     }
 }
 function rerollShop(){
@@ -286,11 +421,37 @@ function drawMenus(){
         ctx.fillStyle = "#90b0c0aa"
         ctx.fillRect(0,0,10000,10000)
         ctx.font = "bold 48px Sans-serif";
+        ctx.font = "bold 148px Sans-serif";
         ctx.fillStyle = "#fff"
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 15;
         ctx.strokeStyle="#000"
-        ctx.strokeText("you died.", 100, 100)
-        ctx.fillText("you died.", 100, 100)
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.strokeText("you died.", 1280/2, 200)
+        ctx.fillText("you died.", 1280/2, 200)
+        ctx.font = "bold 78px Sans-serif";
+        ctx.lineWidth = 8;
+        ctx.strokeText("Killed: "+killCount, 1280/2, 400)
+        ctx.fillText("Killed: "+killCount, 1280/2, 400)
+        ctx.strokeText("Enter To Restart", 1280/2, 600)
+        ctx.fillText("Enter To Restart", 1280/2, 600)
+    }
+    if(gameState==3){
+        ctx.fillStyle = "#90b0c0aa"
+        ctx.fillRect(0,0,10000,10000)
+        ctx.font = "bold 48px Sans-serif";
+        ctx.font = "bold 78px Sans-serif";
+        ctx.fillStyle = "#fff"
+        ctx.lineWidth = 8;
+        ctx.strokeStyle="#000"
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.strokeText("Yet Another Twin Stick Shooter", 1280/2, 200)
+        ctx.fillText("Yet Another Twin Stick Shooter", 1280/2, 200)
+        ctx.font = "bold 78px Sans-serif";
+        ctx.lineWidth = 8;
+        ctx.strokeText("W To Start", 1280/2, 600)
+        ctx.fillText("W To Start", 1280/2, 600)
     }
     if(gameState==2){
         var count = 2,
@@ -443,6 +604,7 @@ function enemyTick(){
                     }
                 }
                 enemies.splice(i,1)
+                killCount++
             }else{
                 player.health.current--
                 enemies.splice(i,1)
@@ -482,7 +644,6 @@ function drawPlayer(){
     ctx.save()
     ctx.translate(player.position.x,player.position.y)
     ctx.rotate(Math.atan2(player.position.y - mouseWorld.y, player.position.x - mouseWorld.x)-(180*Math.PI/180))
-    console.log(mouseWorld.x, player.position.x)
     ctx.fillStyle = "#33363f"
     ctx.fillRect(-50,-50,100,100)
     ctx.fillRect(0,-5,70,10)

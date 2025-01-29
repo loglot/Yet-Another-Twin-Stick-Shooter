@@ -376,7 +376,12 @@ function menuTick(){
                 
             }
             if(shopMenuVals.selection==3){
-                rerollShop()
+                if(player.health.current-Math.ceil(player.health.max/4)>0){
+
+                    rerollShop()
+                    player.health.current-=Math.ceil(player.health.max/4)
+    
+                }
             }
             
         }
@@ -397,10 +402,17 @@ function menuTick(){
         }
     }
 }
-function rerollShop(){
-    
-}
 
+function rerollShop(){
+    var old = JSON.parse(JSON.stringify(shopStorage))
+    shopStorage[0]=Math.floor(Math.random()*shopItemList.length)
+    shopStorage[1]=Math.floor(Math.random()*shopItemList.length)
+    shopMenuVals.selection=2
+    if(shopStorage[0]==old[0]&&shopStorage[1]==old[1]){
+        rerollShop()
+    }
+}
+rerollShop()
 function draw(){
     ctx.fillStyle = "#90b0c0"
     ctx.fillRect(0,0,10000,10000)

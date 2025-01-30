@@ -11,7 +11,7 @@ var mouse = {x:0,y:0},
         position:{x:0,y:0}, 
         velocity:{x:0,y:0}, 
         hit:0,
-        health:{current:50,max:50},
+        health:{current:5,max:5},
         power:{
             name:"none",
             currentCharge:0,
@@ -904,9 +904,9 @@ function drawShop(){
     ctx.rotate(-(shop.position.x-player.position.x)/1000)
     ctx.beginPath(); 
     ctx.fillStyle = "#33363f"
+    ctx.fillRect(-100,-100,200,200)
     ctx.arc(0, -100, 55, 0, 2 * Math.PI);
     ctx.fill()
-    ctx.fillRect(-100,-100,200,200)
     ctx.closePath()
     ctx.fillStyle = "#afafaf"
     ctx.fillRect(5-100,5-100,190,190)
@@ -918,6 +918,15 @@ function drawShop(){
     ctx.arc(0, -100, 45, 0, 2 * Math.PI);//#dfdf8d
     ctx.fillStyle = "#cfcfaf"
     ctx.fill()
+
+    if(shop.modifier.name!="none"){
+        ctx.fillStyle = "#33363f"
+        ctx.fillRect(-100,70,200,30)
+        ctx.fillStyle = "#afafaf"
+        ctx.fillRect(5-100,5+70,190,20)
+        ctx.fillStyle = "#cfcfaf"
+        ctx.fillRect(5-100,5+70,190*(shop.modifier.currentCharge/shop.modifier.targetCharge),20)
+    }
     ctx.restore()
 
 }

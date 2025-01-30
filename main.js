@@ -11,7 +11,7 @@ var mouse = {x:0,y:0},
         position:{x:0,y:0}, 
         velocity:{x:0,y:0}, 
         hit:0,
-        health:{current:5,max:5},
+        health:{current:50,max:50},
         power:{
             name:"none",
             currentCharge:0,
@@ -32,6 +32,10 @@ var mouse = {x:0,y:0},
     deathAlpha = 0,
     healthPoints = [],
     enemyTimer = 0,
+    lastFrameclick=false,
+    globalEnemyVals={
+        frictionAdd:0
+    },
     shop = {
         position:{x:0,y:-250}, 
         modifier:{
@@ -375,10 +379,19 @@ function rclick(){
         if(player.power.name=="ShockWave"){
             for(let i = 0; i<enemies.length;i++){
                 var Dist=Math.abs(enemies[i].position.x-player.position.x)+Math.abs(enemies[i].position.y-player.position.y)
-                var Val = Math.max(-Dist+500,0)/70
+                var Val = Math.max(-Dist+1000,0)/500
                 enemies[i].velocity.x=-((player.position.x-enemies[i].position.x)*Val)/10
                 enemies[i].velocity.y=-((player.position.y-enemies[i].position.y)*Val)/10
+                globalEnemyVals.frictionAdd=.5
             }
+            for(let i = 0; i<healthPoints.length;i++){
+                var Dist=Math.abs(healthPoints[i].position.x-player.position.x)+Math.abs(healthPoints[i].position.y-player.position.y)
+                var Val = Math.max(-Dist+1000,0)/500
+                healthPoints[i].velocity.x=-((player.position.x-healthPoints[i].position.x)*Val)/10
+                healthPoints[i].velocity.y=-((player.position.y-healthPoints[i].position.y)*Val)/10
+            }
+            wave = new Audio(`./assets/shockwave${1}.wav`)
+            wave.play()
         }
     }
 }
@@ -446,40 +459,73 @@ function tick(){
 
 function menuTick(){
     if(gameState==2){
+        var frameaa = false
         if(kd.LEFT.isDown()){
-            shopMenuVals.selection=0
+            if(!lastFrameclick){
+                
+                shopMenuVals.selection=0
+                blip = new Audio(`./assets/blip${1}.wav`)
+                blip.play()
+            }
+            frameaa=true
+            
         }
         if(kd.RIGHT.isDown()){
-            shopMenuVals.selection=1
+            if(!lastFrameclick){
+                
+                shopMenuVals.selection=1
+                blip = new Audio(`./assets/blip${1}.wav`)
+                blip.play()
+            }
+            frameaa=true
             
         }
         if(kd.UP.isDown()){
-            shopMenuVals.selection=3
+            if(!lastFrameclick){
+                
+                shopMenuVals.selection=3
+                blip = new Audio(`./assets/blip${1}.wav`)
+                blip.play()
+            }
+            frameaa=true
             
         }
         if(kd.ENTER.isDown()){
-            if(!(shopMenuVals.selection>=2)){
-                if(shopItemList[shopStorage[shopMenuVals.selection]].purchaseCheck()&&!(shopMenuVals.selection==2)){
-
-                    shopItemList[shopStorage[shopMenuVals.selection]].purchase()
-                    shopMenuVals.selection=2
-                
-                }
-                
-            }
-            if(shopMenuVals.selection==3){
-                if(player.health.current-Math.ceil(player.health.max/4)>0){
-
-                    rerollShop()
-                    player.health.current-=Math.ceil(player.health.max/10)
+            frameaa=true
+            if(!lastFrameclick){
+                if(!(shopMenuVals.selection>=2)){
+                    if(shopItemList[shopStorage[shopMenuVals.selection]].purchaseCheck()&&!(shopMenuVals.selection==2)){
+                        blip = new Audio(`./assets/blip${3}.wav`)
+                        blip.play()
     
+                        shopItemList[shopStorage[shopMenuVals.selection]].purchase()
+                        shopMenuVals.selection=2
+                    
+                    } else{
+                        blip = new Audio(`./assets/blip${2}.wav`)
+                        blip.play()
+                        shopMenuVals.selection=2
+
+                    }
+                    
+                }
+                if(shopMenuVals.selection==3){
+                    blip = new Audio(`./assets/blip${2}.wav`)
+                    blip.play()
+                    if(player.health.current-Math.ceil(player.health.max/4)>0){
+    
+                        rerollShop()
+                        player.health.current-=Math.ceil(player.health.max/10)
+        
+                    }
                 }
             }
-            
         }
         if(kd.BACKSPACE.isDown()){
             gameState=1
         }
+        lastFrameclick=frameaa
+        
     }
     if(gameState==0){
         
@@ -695,8 +741,8 @@ function enemyTick(){
         enemies[i].position.x += enemies[i].velocity.x
         enemies[i].position.y += enemies[i].velocity.y
         
-        enemies[i].velocity.x *= enemies[i].friction
-        enemies[i].velocity.y *= enemies[i].friction
+        enemies[i].velocity.x *= Math.min(enemies[i].friction+globalEnemyVals.frictionAdd,.99)
+        enemies[i].velocity.y *= Math.min(enemies[i].friction,.99)
 
         if(Math.abs(player.position.x-enemies[i].position.x)<100&&Math.abs(player.position.y-enemies[i].position.y)<100){
             if(player.hit>.7){
@@ -726,12 +772,15 @@ function enemyTick(){
         spawnEnemy()
         enemyTimer=0
     }
+    globalEnemyVals.frictionAdd=Math.max(globalEnemyVals.frictionAdd-.01,0)
 
 }
 var hurt
 var kill
 var shoot
 var heal
+var wave
+var blip
 function failState(){
     gameState=0
     deathAlpha=1
@@ -757,6 +806,15 @@ function drawPlayer(){
     ctx.save()
     ctx.translate(player.position.x,player.position.y)
     ctx.rotate(Math.atan2(player.position.y - mouseWorld.y, player.position.x - mouseWorld.x)-(180*Math.PI/180))
+    
+    if((player.power.name=="ShockWave")){
+        ctx.beginPath(); 
+        ctx.arc(0, 0, player.power.currentCharge*30, 0, 2 * Math.PI);//#dfdf8d
+        ctx.fillStyle = `rgba(223, 191, 223, ${Math.min(((-player.power.currentCharge/500)+1)*6-5,1)})`
+        ctx.fill()
+    }
+
+
     ctx.fillStyle = "#33363f"
     ctx.fillRect(-50,-50,100,100)
     ctx.fillRect(0,-5,70,10)

@@ -212,127 +212,212 @@ var mouse = {x:0,y:0},
     }
 
     function restart(){
-        mouse = {x:0,y:0}
-        mouseWorld = {x:0,y:0}
+        
+mouse = {x:0,y:0},
+mouseWorld = {x:0,y:0},
 
-        player = {
-            position:{x:0,y:0}, 
-            velocity:{x:0,y:0}, 
-            hit:0,
-            health:{current:5,max:5},
-            power:{
-                name:"none",
-                currentCharge:0,
-                targetCharge:500,
-            }
+player = {
+    position:{x:0,y:0}, 
+    velocity:{x:0,y:0}, 
+    hit:0,
+    health:{current:5,max:5},
+    power:{
+        name:"none",
+        currentCharge:0,
+        targetCharge:250,
+    },
+    KB:1
 
-        }
+},
 
-
-        camera = {position:{x:0,y:0}, velocity:{x:0,y:0}}
-        display = {startWidth:1280, aspectRatio:[4,3], scale:0}
-        enemies = []
-        deathAlpha = 0
-        healthPoints = []
-        enemyTimer = 0
-        shop = {position:{x:0,y:-250}}
-        killCount=0
-        shopItemList = [
-            {
-                Title:"Health Upgrade",
-                Description:[
-                    "something ain't right",
-                    "please report to developer"
-                ],
-                price:1,
-                purchase:function(){
-
-                    player.health.max += Math.ceil(this.price/2)
-                    player.health.current -= this.price
-                    
-                    shopMenuVals.selection=2
-                },
-                type:"HP",
-                purchaseCheck:function(){
-                    this.price=Math.ceil(player.health.max/2)
-                    this.Description=[
-                        `gives +${Math.ceil(this.price/2)} max health`,
-                        "<Reusable>"
-                    ]
-                    if(player.health.current-this.price<=0){
-                        return false
-                    }
-                    return true
-                }
-
-            },
-            {
-                Title:"Desperation",
-                Description:[
-                    "gives 2 HP",
-                    "<Reusable>"
-                ],
-                price:3,
-                purchase:function(){
-                    spawnHealthRandom(shop,2)
-                    player.health.max-=this.price
-                    while(player.health.current>player.health.max){
-                        player.health.current--
-                        spawnHealthRandom(player)
-                    }
-                    shopMenuVals.selection=2
-                },
-                type:" MAX HP",
-                purchaseCheck:function(){
-                    if(player.health.max-this.price<=1){
-                        return false
-                    }
-                    return true
-                }
-
-
-            },
-            {
-                Title:"ShockWave",
-                Description:[
-                    "something ain't right",
-                    "please report to developer"
-                ],
-                price:2,
-                purchase:function(){
-                    player.power.name="ShockWave"
-                    player.health.max-=this.price
-                    while(player.health.current>player.health.max){
-                        player.health.current--
-                        spawnHealthRandom(player)
-                    }
-                    shopMenuVals.selection=2
-                },
-                type:" MAX HP",
-                purchaseCheck:function(){
-
-                    this.Description=[
-                        "Push Back Enemies",
-                        "<Ability>",
-                        "",
-                        "",
-                        "",
-                        `REPLACES : `,
-                        `[${player.power.name}]`
-                    ]
-                    if(player.health.max-this.price<=1){
-                        return false
-                    }
-                    return true
-                }
-
-
-            }
+tickFuncs={
+    modifier:function(){return false},
+    power:function(){return false},
+},
+camera = {position:{x:0,y:0}, velocity:{x:0,y:0}},
+display = {startWidth:1280, aspectRatio:[4,3], scale:0},
+enemies = [],
+deathAlpha = 0,
+healthPoints = [],
+enemyTimer = 0,
+lastFrameclick=false,
+globalEnemyVals={
+    frictionAdd:0
+},
+shop = {
+    position:{x:0,y:-250}, 
+    modifier:{
+        name:"none",
+        currentCharge:0,
+        targetCharge:500,
+    }
+},
+killCount=0,
+shopItemList = [
+    {
+        Title:"Health Upgrade",
+        Description:[
+            "something ain't right",
+            "please report to developer"
         ],
-        shopStorage = [0,2]
-        shopMenuVals={
-            selection:2
+        price:1,
+        purchase:function(){
+
+            player.health.max += Math.ceil(this.price/2)
+            player.health.current -= this.price
+            
+            shopMenuVals.selection=2
+        },
+        type:"HP",
+        purchaseCheck:function(){
+            this.price=Math.ceil(player.health.max/2)
+            this.Description=[
+                `gives +${Math.ceil(this.price/2)} max health`,
+                "<Reusable>"
+            ]
+            if(player.health.current-this.price<=0){
+                return false
+            }
+            return true
         }
+
+    },
+    {
+        Title:"Desperation",
+        Description:[
+            "gives 2 HP",
+            "<Reusable>"
+        ],
+        price:3,
+        purchase:function(){
+            spawnHealthRandom(shop,2)
+            player.health.max-=this.price
+            while(player.health.current>player.health.max){
+                player.health.current--
+                spawnHealthRandom(player)
+            }
+            shopMenuVals.selection=2
+        },
+        type:" MAX HP",
+        purchaseCheck:function(){
+            if(player.health.max-this.price<=1){
+                return false
+            }
+            return true
+        }
+
+
+    },
+    {
+        Title:"KnockBack Up",
+        Description:[
+            "makes you go",
+            "flying back",
+            "even farther",
+            "<Reusable>"
+        ],
+        price:5,
+        purchase:function(){
+            player.health.current-=this.price
+            player.KB+=5
+            shopMenuVals.selection=2
+            this.price*=2
+        },
+        type:" HP",
+        purchaseCheck:function(){
+            if(player.health.current-this.price<=1){
+                return false
+            }
+            return true
+        }
+
+
+    },
+    {
+        Title:"Spawn Health",
+        Description:[
+            "something ain't right",
+            "please report to developer"
+        ],
+        price:10,
+        purchase:function(){
+            shop.modifier.name="Spawn Health"
+            player.health.max-=this.price
+            while(player.health.current>player.health.max){
+                player.health.current--
+                spawnHealthRandom(player)
+            }
+            shopMenuVals.selection=2
+            tickFuncs.modifier=function(){
+                shop.modifier.currentCharge++
+                if(shop.modifier.currentCharge>=shop.modifier.targetCharge){
+                    spawnHealthRandom(shop,1)
+                    shop.modifier.currentCharge=0
+                }
+                
+            }
+        },
+        type:" MAX HP",
+        purchaseCheck:function(){
+
+            this.Description=[
+                "Shop will sometimes",
+                "spawn health",
+                "<Modifier>",
+                "",
+                "",
+                `REPLACES : `,
+                `[${shop.modifier.name}]`
+            ]
+            if(player.health.max-this.price<=1){
+                return false
+            }
+            return true
+        }
+
+
+    },
+    {
+        Title:"ShockWave",
+        Description:[
+            "something ain't right",
+            "please report to developer"
+        ],
+        price:2,
+        purchase:function(){
+            player.power.name="ShockWave"
+            player.health.max-=this.price
+            while(player.health.current>player.health.max){
+                player.health.current--
+                spawnHealthRandom(player)
+            }
+            shopMenuVals.selection=2
+        },
+        type:" MAX HP",
+        purchaseCheck:function(){
+
+            this.Description=[
+                "Push Back Enemies",
+                "<Ability>",
+                "",
+                "",
+                "",
+                `REPLACES : `,
+                `[${player.power.name}]`
+            ]
+            if(player.health.max-this.price<=1){
+                return false
+            }
+            return true
+        }
+
+
+    }
+],
+shopStorage = [0,2],
+shopMenuVals={
+    selection:2
+}
 
     }
 
